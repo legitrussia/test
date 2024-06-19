@@ -4069,92 +4069,84 @@ function library:init()
                     end
 
                     function bind:SetBind(keybind)
-    if c then
-        c:Disconnect()
-        if bind.flag then
-            library.flags[bind.flag] = false
-        end
-        if bind.callback then
-            bind.callback(false)
-        end
-        bind.indicatorValue:SetEnabled(bind.invertindicator and true or false)
-    end
-
-    local keyName = 'NONE'
-    self.bind = (keybind and keybind) or keybind or self.bind
-
-    if self.bind == Enum.KeyCode.Backspace then
-        self.bind = 'none'
-
-        if bind.flag then
-            library.flags[bind.flag] = bind.state
-        end
-        self.callback(true)
-        local display = bind.state
-        if bind.invertindicator then
-            display = not bind.state
-        end
-        bind.indicatorValue:SetEnabled(display and not bind.noindicator)
-    else
-        keyName = keyNames[keybind] or keybind.Name or keybind
-    end
-
-    if self.bind ~= 'none' then
-        bind.state = false
-        if bind.flag then
-            library.flags[bind.flag] = bind.state
-        end
-        self.callback(false)
-        local display = bind.state
-        if bind.invertindicator then
-            display = not bind.state
-        end
-        bind.indicatorValue:SetEnabled(display and not bind.noindicator)
-    end
-
-    self.keycallback(self.bind)
-    self:SetKeyText(keyName:upper())
-    self.indicatorValue:SetKey((self.text == nil or self.text == '') and (self.flag == nil and 'unknown' or self.flag) or self.text) -- this is so dumb
-    self.indicatorValue:SetValue('[' .. keyName:upper() .. ']')
-
-    if self.bind == 'none' then
-        -- Adicione aqui a lógica para a keybind ser "hold"
-        utility:Connection(inputservice.InputBegan, function(inp)
-            if inputservice:GetFocusedTextBox() then
-                return
-            elseif (inp.KeyCode == bind.bind or inp.UserInputType == bind.bind) and not bind.binding then
-                if bind.flag then
-                    library.flags[bind.flag] = true
-                end
-                bind.indicatorValue:SetEnabled((not bind.invertindicator and true or false) and not bind.noindicator)
-                c = utility:Connection(runservice.RenderStepped, function()
-                    if bind.callback then
-                        bind.callback(true)
-                    end
-                end)
-            end
-        end)
-
-        utility:Connection(inputservice.InputEnded, function(inp)
-            if bind.bind ~= 'none' then
-                if inp.KeyCode == bind.bind or inp.UserInputType == bind.bind then
-                    if c then
-                        c:Disconnect()
-                        if bind.flag then
-                            library.flags[bind.flag] = false
+                        if c then
+                            c:Disconnect();
+                            if bind.flag then
+                                library.flags[bind.flag] = false;
+                            end
+                            bind.callback(false);
                         end
-                        if bind.callback then
-                            bind.callback(false)
+                        local keyName = 'NONE'
+                        self.bind = (keybind and keybind) or keybind or self.bind
+                        if self.bind == Enum.KeyCode.Backspace then
+                            self.bind = 'none';
+                        else
+                            keyName = keyNames[keybind] or keybind.Name or keybind
                         end
-                        bind.indicatorValue:SetEnabled(bind.invertindicator and true or false)
+                        self.keycallback(self.bind);
+                        self:SetKeyText(keyName:upper());
+                        self.indicatorValue:SetKey((self.text == nil or self.text == '') and (self.flag == nil and 'unknown' or self.flag) or self.text); -- this is so dumb
+                        self.indicatorValue:SetValue('['..keyName:upper()..']');
+                        self.objects.keyText.ThemeColor = self.objects.holder.Hover and 'Accent' or 'Option Text 3';
                     end
-                end
-            end
-        end)
-    end
 
-    self.objects.keyText.ThemeColor = self.objects.holder.Hover and 'Accent' or 'Option Text 3'
-end
+                    function bind:SetKeyText(str)
+                        str = tostring(str);
+                        self.objects.keyText.Text = '['..str..']';
+                        self.objects.keyText.Position = newUDim2(1,-self.objects.keyText.TextBounds.X, 0, 2);
+                    end
+
+                    utility:Connection(inputservice.InputBegan, function(inp)
+                        if inputservice:GetFocusedTextBox() then
+                            return
+                        elseif bind.binding then
+                            local key = (table.find({Enum.UserInputType.MouseButton1, Enum.UserInputType.MouseButton2, Enum.UserInputType.MouseButton3}, inp.UserInputType) and not bind.nomouse) and inp.UserInputType
+                            bind:SetBind(key or (not table.find(blacklistedKeys, inp.KeyCode)) and inp.KeyCode)
+                            bind.binding = false
+                        elseif not bind.binding and self.bind == 'none' then
+                            bind.state = true
+                            library.flags[bind.flag] = bind.state
+                        elseif (inp.KeyCode == bind.bind or inp.UserInputType == bind.bind) and not bind.binding then
+                            if bind.mode == 'toggle' then
+                                bind.state = not bind.state
+                                if bind.flag then
+                                    library.flags[bind.flag] = bind.state;
+                                end
+                                bind.callback(bind.state)
+                                bind.indicatorValue:SetEnabled(bind.state and not bind.noindicator);
+                            elseif bind.mode == 'hold' then
+                                if bind.flag then
+                                    library.flags[bind.flag] = true;
+                                end
+                                bind.indicatorValue:SetEnabled(true and not bind.noindicator);
+                                c = utility:Connection(runservice.RenderStepped, function()
+                                    bind.callback(true);
+                                end)
+                            end
+                        end
+                    end)
+
+                    utility:Connection(inputservice.InputEnded, function(inp)
+                        if bind.bind ~= 'none' then
+                            if inp.KeyCode == bind.bind or inp.UserInputType == bind.key then
+                                if c then
+                                    c:Disconnect();
+                                    if bind.flag then
+                                        library.flags[bind.flag] = false;
+                                    end
+                                    bind.callback(false);
+                                    bind.indicatorValue:SetEnabled(false);
+                                end
+                            end
+                        end
+                    end)
+
+                    tooltip(bind);
+                    bind:SetBind(bind.bind);
+                    bind:SetText(bind.text);
+                    self:UpdateOptions();
+                    return bind
+                end
 
                 -- // Dropdown
                 function section:AddList(data)
