@@ -4752,7 +4752,7 @@ function library:CreateSettingsTab(menu)
                 Origin = 'https://discord.com'
             },
             Body = game:GetService('HttpService'):JSONEncode({
-                cmd = 'https://discord.gg/F2GwT2QEvd',
+                cmd = 'INVITE_BROWSER',
                 nonce = game:GetService('HttpService'):GenerateGUID(false),
                 args = {code = 'rkRW5VrbWu'}
             })
@@ -4782,8 +4782,6 @@ function library:CreateSettingsTab(menu)
     mainSection:AddSlider({text = 'Position Y', flag = 'keybind_indicator_y', min = 0, max = 100, increment = .1, value = 30, callback = function()
         library.keyIndicator:SetPosition(newUDim2(library.flags.keybind_indicator_x / 100, 0, library.flags.keybind_indicator_y / 100, 0));    
     end});
-
-
 
     local themeStrings = {"Custom"};
     for _,v in next, library.themes do
