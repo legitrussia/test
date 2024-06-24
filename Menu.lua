@@ -44,6 +44,7 @@ local library = {
         ['window'] = 1000;
         ['dropdown'] = 1200;
         ['colorpicker'] = 1100;
+        ['watermark'] = 1300;
         ['notification'] = 1400;
         ['cursor'] = 1500;
     },
@@ -4558,3 +4559,284 @@ function library:init()
 
     end
     
+    -- Watermark
+    do
+        if not IonHub_User then
+            getgenv().IonHub_User = {
+                UID = 0, 
+                User = "admin"
+            }
+        end
+        self.watermark = {
+            objects = {};
+            text = {
+                {self.cheatname, true},
+                {"Private", true},
+                {self.gamename, true},
+                {'0 fps', true},
+                {'0ms', true},
+                {'00:00:00', true},
+                {'M, D, Y', true},
+            };
+            lock = 'custom';
+            position = newUDim2(0,0,0,0);
+            refreshrate = 25;
+        }
+
+        function self.watermark:Update()
+            self.objects.background.Visible = library.flags.watermark_enabled
+            if library.flags.watermark_enabled then
+                local date = {os.date('%b',os.time()), os.date('%d',os.time()), os.date('%Y',os.time())}
+                local daySuffix = math.floor(date[2]%10)
+                date[2] = date[2]..(daySuffix == 1 and 'st' or daySuffix == 2 and 'nd' or daySuffix == 3 and 'rd' or 'th')
+
+                self.text[4][1] = library.stats.fps..' fps'
+                self.text[5][1] = floor(library.stats.ping)..'ms'
+                self.text[6][1] = os.date('%X', os.time())
+                self.text[7][1] = table.concat(date, ', ')
+
+                local text = {};
+                for _,v in next, self.text do
+                    if v[2] then
+                        table.insert(text, v[1]);
+                    end
+                end
+
+                self.objects.text.Text = table.concat(text,' | ')
+                self.objects.background.Size = newUDim2(0, self.objects.text.TextBounds.X + 10, 0, 17)
+
+                local size = self.objects.background.Object.Size;
+                local screensize = workspace.CurrentCamera.ViewportSize;
+
+                self.position = (
+                    self.lock == 'Top Right' and newUDim2(0, screensize.X - size.X - 15, 0, 15) or
+                    self.lock == 'Top Left' and newUDim2(0, 15, 0, 15) or
+                    self.lock == 'Bottom Right' and newUDim2(0, screensize.X - size.X - 15, 0, screensize.Y - size.Y - 15) or
+                    self.lock == 'Bottom Left' and newUDim2(0, 15, 0, screensize.Y - size.Y - 15) or
+                    self.lock == 'Top' and newUDim2(0, screensize.X / 2 - size.X / 2, 0, 15) or
+                    newUDim2(library.flags.watermark_x / 100, 0, library.flags.watermark_y / 100, 0)
+                )
+
+                self.objects.background.Position = self.position
+            end
+        end
+
+        do
+            local objs = self.watermark.objects;
+            local z = self.zindexOrder.watermark;
+            
+            objs.background = utility:Draw('Square', {
+                Visible = false;
+                Size = newUDim2(0, 200, 0, 17);
+                Position = newUDim2(0,800,0,100);
+                ThemeColor = 'Background';
+                ZIndex = z;
+            })
+
+            objs.border1 = utility:Draw('Square', {
+                Size = newUDim2(1,2,1,2);
+                Position = newUDim2(0,-1,0,-1);
+                ThemeColor = 'Border 2';
+                Parent = objs.background;
+                ZIndex = z-1;
+            })
+
+            objs.border2 = utility:Draw('Square', {
+                Size = newUDim2(1,2,1,2);
+                Position = newUDim2(0,-1,0,-1);
+                ThemeColor = 'Border 3';
+                Parent = objs.border1;
+                ZIndex = z-2;
+            })
+            
+            objs.topbar = utility:Draw('Square', {
+                Size = newUDim2(1,0,0,1);
+                ThemeColor = 'Accent';
+                ZIndex = z+1;
+                Parent = objs.background;
+            })
+
+            objs.text = utility:Draw('Text', {
+                Position = newUDim2(.5,0,0,2);
+                ThemeColor = 'Primary Text';
+                Text = 'Watermark Text';
+                Size = 13;
+                Font = 2;
+                ZIndex = z+1;
+                Outline = true;
+                Center = true;
+                Parent = objs.background;
+            })
+
+        end
+    end
+
+    local lasttick = tick();
+    utility:Connection(runservice.RenderStepped, function(step)
+        library.stats.fps = floor(1/step)
+        library.stats.ping = stats.Network.ServerStatsItem["Data Ping"]:GetValue()
+        library.stats.sendkbps = stats.DataSendKbps
+        library.stats.receivekbps = stats.DataReceiveKbps
+
+        if (tick()-lasttick)*1000 > library.watermark.refreshrate then
+            lasttick = tick()
+            library.watermark:Update()
+        end
+    end)
+
+    self.keyIndicator = self.NewIndicator({title = 'Keybinds', pos = newUDim2(0,15,0,325), enabled = true});
+    
+    self.targetIndicator = self.NewIndicator({title = 'Target Info', pos = newUDim2(0,15,0,350), enabled = false});
+    self.targetName = self.targetIndicator:AddValue({key = 'Name     :', value = 'nil'})
+    self.targetDisplay = self.targetIndicator:AddValue({key = 'DName    :', value = 'nil'})
+    self.targetHealth = self.targetIndicator:AddValue({key = 'Health   :', value = '0'})
+    self.targetDistance = self.targetIndicator:AddValue({key = 'Distance :', value = '0m'})
+    self.targetTool = self.targetIndicator:AddValue({key = 'Weapon   :', value = 'nil'})
+
+    self:SetTheme(library.theme);
+    self:SetOpen(true);
+    self.hasInit = true
+
+end
+
+function library:CreateSettingsTab(menu)
+    local settingsTab = menu:AddTab('  Settings  ', 999);
+    local configSection = settingsTab:AddSection('Config', 1);
+    local mainSection = settingsTab:AddSection('Main', 1);
+
+    configSection:AddBox({text = 'Config Name', flag = 'configinput'})
+    configSection:AddList({text = 'Config', flag = 'selectedconfig'})
+
+    local function refreshConfigs()
+        library.options.selectedconfig:ClearValues();
+        for _,v in next, listfiles(self.cheatname..'/'..self.gamename..'/configs') do
+            local ext = '.'..v:split('.')[#v:split('.')];
+            if ext == self.fileext then
+                library.options.selectedconfig:AddValue(v:split('\\')[#v:split('\\')]:sub(1,-#ext-1))
+            end
+        end
+    end
+
+    configSection:AddButton({text = 'Load', confirm = true, callback = function()
+        library:LoadConfig(library.flags.selectedconfig);
+    end}):AddButton({text = 'Save', confirm = true, callback = function()
+        library:SaveConfig(library.flags.selectedconfig);
+    end})
+
+    configSection:AddButton({text = 'Create', confirm = true, callback = function()
+        if library:GetConfig(library.flags.configinput) then
+            library:SendNotification('Config \''..library.flags.configinput..'\' already exists.', 5, c3new(1,0,0));
+            return
+        end
+        writefile(self.cheatname..'/'..self.gamename..'/configs/'..library.flags.configinput.. self.fileext, http:JSONEncode({}));
+        refreshConfigs()
+    end}):AddButton({text = 'Delete', confirm = true, callback = function()
+        if library:GetConfig(library.flags.selectedconfig) then
+            delfile(self.cheatname..'/'..self.gamename..'/configs/'..library.flags.selectedconfig.. self.fileext);
+            refreshConfigs()
+        end
+    end})
+
+    refreshConfigs()
+
+    mainSection:AddBind({text = 'Open / Close', flag = 'togglebind', nomouse = true, noindicator = true, bind = Enum.KeyCode.End, callback = function()
+        library:SetOpen(not library.open)
+    end});
+
+    mainSection:AddButton({text = 'Join Discord', flag = 'joindiscord', confirm = true, callback = function()
+        local res = syn.request({
+            Url = 'https://discord.gg/rkRW5VrbWu',
+            Method = 'POST',
+            Headers = {
+                ['Content-Type'] = 'application/json',
+                Origin = 'https://discord.com'
+            },
+            Body = game:GetService('HttpService'):JSONEncode({
+                cmd = 'INVITE_BROWSER',
+                nonce = game:GetService('HttpService'):GenerateGUID(false),
+                args = {code = 'rkRW5VrbWu'}
+            })
+        })
+        if res.Success then
+            library:SendNotification(library.cheatname..' | Joined Discord', 3);
+        end
+    end})
+
+    mainSection:AddButton({text = 'Rejoin Server', confirm = true, callback = function()
+        game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, game.JobId);
+    end})
+
+    mainSection:AddButton({text = 'Rejoin Game', confirm = true, callback = function()
+        game:GetService("TeleportService"):Teleport(game.PlaceId);
+    end})
+
+    mainSection:AddButton({text = 'Copy Join Script', callback = function()
+        setclipboard(([[game:GetService("TeleportService"):TeleportToPlaceInstance(%s, "%s")]]):format(game.PlaceId, game.JobId))
+    end})
+
+    mainSection:AddButton({text = "Unload", confirm = true,
+       callback = function(bool)
+           if bool then
+               library:Unload() 
+           else
+               library:Unload() 
+           end
+       end})
+
+    mainSection:AddSeparator({text = 'Indicators'});
+
+    mainSection:AddToggle({text = 'Watermark', flag = 'watermark_enabled', state = true,});
+
+    mainSection:AddSlider({text = 'Custom X', flag = 'watermark_x', suffix = '%', min = 0, max = 100, increment = .1, value = 6});
+    mainSection:AddSlider({text = 'Custom Y', flag = 'watermark_y', suffix = '%', min = 0, max = 100, increment = .1, value = 1});
+
+    mainSection:AddToggle({text = 'Keybinds', flag = 'keybind_indicator', state = true, callback = function(bool)
+        library.keyIndicator:SetEnabled(bool);
+    end})
+    mainSection:AddSlider({text = 'Position X', flag = 'keybind_indicator_x', min = 0, max = 100, increment = .1, value = .5, callback = function()
+        library.keyIndicator:SetPosition(newUDim2(library.flags.keybind_indicator_x / 100, 0, library.flags.keybind_indicator_y / 100, 0));    
+    end});
+    mainSection:AddSlider({text = 'Position Y', flag = 'keybind_indicator_y', min = 0, max = 100, increment = .1, value = 30, callback = function()
+        library.keyIndicator:SetPosition(newUDim2(library.flags.keybind_indicator_x / 100, 0, library.flags.keybind_indicator_y / 100, 0));    
+    end});
+
+
+
+    local themeStrings = {"Custom"};
+    for _,v in next, library.themes do
+        table.insert(themeStrings, v.name)
+    end
+    local themeSection = settingsTab:AddSection('Custom Theme', 2);
+    local setByPreset = false
+themeSection:AddList({text = 'Presets', flag = 'preset_theme', values = themeStrings, callback = function(newTheme)
+        if newTheme == "Custom" then return end
+        setByPreset = true
+        for _,v in next, library.themes do
+            if v.name == newTheme then
+                for x, d in pairs(library.options) do
+                    if v.theme[tostring(x)] ~= nil then
+                        d:SetColor(v.theme[tostring(x)])
+                    end
+                end
+                library:SetTheme(v.theme)
+                break
+            end
+        end
+        setByPreset = false
+    end}):Select('Default');
+
+    for i, v in pairs(library.theme) do
+        themeSection:AddColor({text = i, flag = i, color = library.theme[i], callback = function(c3)
+            library.theme[i] = c3
+            library:SetTheme(library.theme)
+            if not setByPreset and not setByConfig then 
+                library.options.preset_theme:Select('Custom')
+            end
+        end});
+    end
+
+    return settingsTab;
+end
+
+getgenv().library = library
+return library
