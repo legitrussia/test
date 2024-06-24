@@ -44,7 +44,6 @@ local library = {
         ['window'] = 1000;
         ['dropdown'] = 1200;
         ['colorpicker'] = 1100;
-        ['watermark'] = 1300;
         ['notification'] = 1400;
         ['cursor'] = 1500;
     },
