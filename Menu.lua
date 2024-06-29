@@ -94,7 +94,7 @@ library.themes = {
             ["Risky Text"]                = fromrgb(175, 21, 21);
             ["Risky Text Enabled"]        = fromrgb(255, 41, 41);
         }
-    },    
+    },
     {
         name = 'Gamesense',
         theme = {
@@ -119,8 +119,6 @@ library.themes = {
             ['Option Background']         = fromrgb(35,35,35);
             ["Risky Text"]                = fromrgb(175, 21, 21);
             ["Risky Text Enabled"]        = fromrgb(255, 41, 41);
-        }
-    },
         }
     }
 }
