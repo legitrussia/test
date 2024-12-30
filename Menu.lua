@@ -1148,6 +1148,9 @@ function Library:Window(options)
                         RightShift = "RShift",
                         MouseButton1 = "M1",
                         MouseButton2 = "M2",
+                        MouseButton3 = "M3",
+                        MouseButton4 = "M4",
+                        MouseButton5 = "M5",
                         LeftAlt = "LAlt",
                         RightAlt = "RAlt"
                     }
