@@ -182,7 +182,7 @@ function Library:Window(options)
     Title.TextSize = 28.000
     Title.TextWrapped = true
 
-    --[[saveBtn.Name = "saveBtn"
+    -saveBtn.Name = "saveBtn"
     saveBtn.Parent = TopBar
     saveBtn.AnchorPoint = Vector2.new(0.5, 0.5)
     saveBtn.BackgroundColor3 = Color3.fromRGB(9, 8, 13)
@@ -1138,7 +1138,6 @@ function Library:Window(options)
                         D = true,
                         I = true,
                         O = true,
-                        Unknown = true
                     }
 
                     local short = {
